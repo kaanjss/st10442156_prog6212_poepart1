@@ -13,3 +13,4 @@ TestResult*/
 .idea/
 .DS_Store
 node_modules/
+wwwroot/uploads/

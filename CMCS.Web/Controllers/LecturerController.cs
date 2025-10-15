@@ -103,10 +103,130 @@ public class LecturerController : Controller
 		return View(claims);
 	}
 
+	[HttpGet]
 	public IActionResult UploadDocuments(int id)
 	{
-		ViewBag.ClaimId = id;
-		return View();
+		var claim = _claimsService.GetClaimById(id);
+		if (claim == null)
+		{
+			TempData["ErrorMessage"] = "Claim not found.";
+			return RedirectToAction(nameof(MyClaims));
+		}
+
+		var viewModel = new DocumentUploadViewModel
+		{
+			ClaimId = id,
+			ExistingDocuments = claim.Documents ?? new List<Document>()
+		};
+
+		return View(viewModel);
+	}
+
+	[HttpPost]
+	[ValidateAntiForgeryToken]
+	public async Task<IActionResult> UploadDocuments(int id, List<IFormFile> files)
+	{
+		try
+		{
+			var claim = _claimsService.GetClaimById(id);
+			if (claim == null)
+			{
+				TempData["ErrorMessage"] = "Claim not found.";
+				return RedirectToAction(nameof(MyClaims));
+			}
+
+			if (files == null || !files.Any())
+			{
+				TempData["ErrorMessage"] = "Please select at least one file to upload.";
+				return RedirectToAction(nameof(UploadDocuments), new { id });
+			}
+
+			// Validate files
+			var allowedExtensions = new[] { ".pdf", ".docx", ".doc", ".xlsx", ".xls" };
+			const long maxFileSize = 5 * 1024 * 1024; // 5 MB
+
+			foreach (var file in files)
+			{
+				if (file.Length == 0)
+					continue;
+
+				// Check file size
+				if (file.Length > maxFileSize)
+				{
+					TempData["ErrorMessage"] = $"File '{file.FileName}' exceeds the maximum size of 5 MB.";
+					return RedirectToAction(nameof(UploadDocuments), new { id });
+				}
+
+				// Check file extension
+				var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+				if (!allowedExtensions.Contains(extension))
+				{
+					TempData["ErrorMessage"] = $"File '{file.FileName}' has an invalid extension. Only PDF, DOCX, DOC, XLSX, and XLS files are allowed.";
+					return RedirectToAction(nameof(UploadDocuments), new { id });
+				}
+
+				// Create uploads directory if it doesn't exist
+				var uploadsPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", id.ToString());
+				Directory.CreateDirectory(uploadsPath);
+
+				// Generate unique filename
+				var uniqueFileName = $"{Guid.NewGuid()}{extension}";
+				var filePath = Path.Combine(uploadsPath, uniqueFileName);
+
+				// Save file to disk
+				using (var stream = new FileStream(filePath, FileMode.Create))
+				{
+					await file.CopyToAsync(stream);
+				}
+
+				// Add document to claim
+				var document = new Document
+				{
+					FileName = file.FileName,
+					FilePath = $"/uploads/{id}/{uniqueFileName}",
+					UploadedAt = DateTime.UtcNow
+				};
+
+				_claimsService.AddDocumentToClaim(id, document);
+			}
+
+			TempData["SuccessMessage"] = $"{files.Count} document(s) uploaded successfully!";
+			return RedirectToAction(nameof(UploadDocuments), new { id });
+		}
+		catch (Exception ex)
+		{
+			TempData["ErrorMessage"] = $"An error occurred while uploading documents: {ex.Message}";
+			return RedirectToAction(nameof(UploadDocuments), new { id });
+		}
+	}
+
+	[HttpPost]
+	[ValidateAntiForgeryToken]
+	public IActionResult DeleteDocument(int claimId, int documentId, string filePath)
+	{
+		try
+		{
+			// Delete file from disk
+			if (!string.IsNullOrEmpty(filePath))
+			{
+				var fullPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", filePath.TrimStart('/'));
+				if (System.IO.File.Exists(fullPath))
+				{
+					System.IO.File.Delete(fullPath);
+				}
+			}
+
+			// Remove from claim
+			_claimsService.RemoveDocumentFromClaim(claimId, documentId);
+
+			TempData["SuccessMessage"] = "Document deleted successfully.";
+		}
+		catch (Exception ex)
+		{
+			TempData["ErrorMessage"] = $"An error occurred while deleting the document: {ex.Message}";
+		}
+
+		return RedirectToAction(nameof(UploadDocuments), new { id = claimId });
 	}
 }
 

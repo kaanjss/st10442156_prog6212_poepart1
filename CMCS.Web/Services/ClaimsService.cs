@@ -70,6 +70,32 @@ public class ClaimsService
 		return UpdateClaimStatus(claimId, ClaimStatus.Rejected, comment);
 	}
 
+	public bool AddDocumentToClaim(int claimId, Document document)
+	{
+		var claim = GetClaimById(claimId);
+		if (claim == null)
+			return false;
+
+		document.Id = claim.Documents.Count + 1;
+		document.ClaimId = claimId;
+		claim.Documents.Add(document);
+		return true;
+	}
+
+	public bool RemoveDocumentFromClaim(int claimId, int documentId)
+	{
+		var claim = GetClaimById(claimId);
+		if (claim == null)
+			return false;
+
+		var document = claim.Documents.FirstOrDefault(d => d.Id == documentId);
+		if (document == null)
+			return false;
+
+		claim.Documents.Remove(document);
+		return true;
+	}
+
 	// Seed with sample data for demonstration
 	public void SeedSampleData()
 	{
