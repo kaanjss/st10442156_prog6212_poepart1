@@ -16,6 +16,18 @@ public class LecturerController : Controller
 
 	public IActionResult Dashboard()
 	{
+		var allClaims = _claimsService.GetAllClaims().ToList();
+		
+		// Calculate statistics
+		ViewBag.TotalClaims = allClaims.Count;
+		ViewBag.PendingClaims = allClaims.Count(c => c.Status == ClaimStatus.Submitted || c.Status == ClaimStatus.Verified);
+		ViewBag.ApprovedClaims = allClaims.Count(c => c.Status == ClaimStatus.Approved || c.Status == ClaimStatus.Settled);
+		ViewBag.RejectedClaims = allClaims.Count(c => c.Status == ClaimStatus.Rejected);
+		ViewBag.TotalAmount = allClaims.Where(c => c.Status == ClaimStatus.Approved || c.Status == ClaimStatus.Settled).Sum(c => c.Amount);
+		
+		// Recent claims
+		ViewBag.RecentClaims = allClaims.OrderByDescending(c => c.Id).Take(5).ToList();
+		
 		return View();
 	}
 
@@ -101,6 +113,21 @@ public class LecturerController : Controller
 	{
 		var claims = _claimsService.GetAllClaims();
 		return View(claims);
+	}
+
+	[HttpGet]
+	public IActionResult TrackClaim(int id)
+	{
+		var claim = _claimsService.GetClaimById(id);
+		if (claim == null)
+		{
+			TempData["ErrorMessage"] = "Claim not found.";
+			return RedirectToAction(nameof(MyClaims));
+		}
+
+		var statusViewModel = ClaimStatusHelper.GetStatusViewModel(claim);
+		ViewBag.Claim = claim;
+		return View(statusViewModel);
 	}
 
 	[HttpGet]

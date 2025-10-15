@@ -59,9 +59,14 @@
 								<td class="text-end">@claim.TotalHours.ToString("N2") hrs</td>
 								<td class="text-end fw-semibold">R @claim.Amount.ToString("N2")</td>
 								<td class="text-center">
-									<a class="btn btn-sm btn-outline-primary" asp-action="UploadDocuments" asp-route-id="@claim.Id" title="Upload Documents">
-										📎 Documents
-									</a>
+									<div class="btn-group btn-group-sm" role="group">
+										<a class="btn btn-outline-info" asp-action="TrackClaim" asp-route-id="@claim.Id" title="Track Status">
+											📊 Track
+										</a>
+										<a class="btn btn-outline-primary" asp-action="UploadDocuments" asp-route-id="@claim.Id" title="Upload Documents">
+											📎 Docs
+										</a>
+									</div>
 								</td>
 							</tr>
 						}
