@@ -1,66 +1,266 @@
 @model CMCS.Web.Models.Claim
 @{
-	ViewData["Title"] = "Review Claim";
+	ViewData["Title"] = "Review Claim #" + Model.Id;
+	var monthName = new DateTime(Model.Year, Model.Month, 1).ToString("MMMM");
+	var statusClass = Model.Status switch
+	{
+		CMCS.Web.Models.ClaimStatus.Draft => "bg-secondary",
+		CMCS.Web.Models.ClaimStatus.Submitted => "bg-primary",
+		CMCS.Web.Models.ClaimStatus.Verified => "bg-info",
+		CMCS.Web.Models.ClaimStatus.Approved => "bg-success",
+		CMCS.Web.Models.ClaimStatus.Rejected => "bg-danger",
+		CMCS.Web.Models.ClaimStatus.Settled => "bg-dark",
+		_ => "bg-secondary"
+	};
 }
 
-<h1>Review Claim #@Model.Id</h1>
-<p class="text-muted">Prototype only. Approve/Reject disabled.</p>
-
-<div class="row g-3">
-	<div class="col-md-6">
-		<div class="card">
-			<div class="card-header">Summary</div>
-			<div class="card-body">
-				<p><strong>Period:</strong> @Model.Month/@Model.Year</p>
-				<p><strong>Status:</strong> @Model.Status</p>
-				<p><strong>Hourly Rate:</strong> @Model.HourlyRate</p>
-				<p><strong>Total Hours:</strong> @Model.TotalHours</p>
-				<p><strong>Amount:</strong> @Model.Amount</p>
+<div class="row">
+	<div class="col-lg-10 mx-auto">
+		<div class="d-flex justify-content-between align-items-center mb-4">
+			<div>
+				<h1 class="mb-1">📋 Review Claim #@Model.Id</h1>
+				<p class="text-muted mb-0">Detailed claim information and verification</p>
+			</div>
+			<div>
+				<a asp-action="Coordinator" class="btn btn-outline-secondary me-2">← Back to List</a>
+				<span class="badge @statusClass fs-6">@Model.Status</span>
 			</div>
 		</div>
-	</div>
-	<div class="col-md-6">
-		<div class="card">
-			<div class="card-header">Documents</div>
+
+		<!-- Claim Summary Card -->
+		<div class="card shadow-sm mb-3">
+			<div class="card-header bg-primary text-white">
+				<h5 class="card-title mb-0">📊 Claim Summary</h5>
+			</div>
 			<div class="card-body">
-				<ul>
-					@foreach (var d in Model.Documents)
-					{
-						<li>@d.FileName</li>
-					}
-				</ul>
+				<div class="row g-4">
+					<div class="col-md-6">
+						<div class="border-start border-primary border-4 ps-3 mb-3">
+							<small class="text-muted d-block">Claim Period</small>
+							<h5 class="mb-0">@monthName @Model.Year</h5>
+						</div>
+						<div class="border-start border-primary border-4 ps-3 mb-3">
+							<small class="text-muted d-block">Lecturer ID</small>
+							<h5 class="mb-0">@Model.LecturerId</h5>
+						</div>
+						<div class="border-start border-primary border-4 ps-3">
+							<small class="text-muted d-block">Current Status</small>
+							<h5 class="mb-0"><span class="badge @statusClass">@Model.Status</span></h5>
+						</div>
+					</div>
+					<div class="col-md-6">
+						<div class="border-start border-success border-4 ps-3 mb-3">
+							<small class="text-muted d-block">Hourly Rate</small>
+							<h5 class="mb-0 text-success">R @Model.HourlyRate.ToString("N2")</h5>
+						</div>
+						<div class="border-start border-success border-4 ps-3 mb-3">
+							<small class="text-muted d-block">Total Hours Worked</small>
+							<h5 class="mb-0 text-success">@Model.TotalHours.ToString("N2") hours</h5>
+						</div>
+						<div class="border-start border-success border-4 ps-3">
+							<small class="text-muted d-block">Total Claim Amount</small>
+							<h4 class="mb-0 text-success fw-bold">R @Model.Amount.ToString("N2")</h4>
+						</div>
+					</div>
+				</div>
 			</div>
 		</div>
-	</div>
-</div>
 
-<div class="card mt-3">
-	<div class="card-header">Lines</div>
-	<div class="card-body">
-		<table class="table table-sm">
-			<thead>
-				<tr>
-					<th>Description</th>
-					<th style="width: 120px;">Hours</th>
-				</tr>
-			</thead>
-			<tbody>
-				@foreach (var l in Model.Lines)
+		<!-- Activities/Lines Card -->
+		<div class="card shadow-sm mb-3">
+			<div class="card-header bg-info text-white">
+				<h5 class="card-title mb-0">⏱️ Activities & Hours Breakdown</h5>
+			</div>
+			<div class="card-body p-0">
+				@if (Model.Lines != null && Model.Lines.Any())
 				{
-					<tr>
-						<td>@l.ActivityDescription</td>
-						<td>@l.Hours</td>
-					</tr>
+					<div class="table-responsive">
+						<table class="table table-hover mb-0">
+							<thead class="table-light">
+								<tr>
+									<th style="width: 5%;">#</th>
+									<th style="width: 70%;">Activity Description</th>
+									<th style="width: 25%;" class="text-end">Hours Worked</th>
+								</tr>
+							</thead>
+							<tbody>
+								@for (int i = 0; i < Model.Lines.Count; i++)
+								{
+									var line = Model.Lines[i];
+									<tr>
+										<td class="fw-semibold text-muted">@(i + 1)</td>
+										<td>@line.ActivityDescription</td>
+										<td class="text-end fw-semibold">@line.Hours.ToString("N2") hrs</td>
+									</tr>
+								}
+							</tbody>
+							<tfoot class="table-light">
+								<tr class="fw-bold">
+									<td colspan="2" class="text-end">Total Hours:</td>
+									<td class="text-end text-primary">@Model.TotalHours.ToString("N2") hrs</td>
+								</tr>
+							</tfoot>
+						</table>
+					</div>
 				}
-			</tbody>
-		</table>
+				else
+				{
+					<div class="p-4 text-center text-muted">
+						<p class="mb-0">No activity breakdown available for this claim.</p>
+					</div>
+				}
+			</div>
+		</div>
+
+		<!-- Documents Card -->
+		<div class="card shadow-sm mb-3">
+			<div class="card-header bg-secondary text-white">
+				<h5 class="card-title mb-0">📎 Supporting Documents</h5>
+			</div>
+			<div class="card-body">
+				@if (Model.Documents != null && Model.Documents.Any())
+				{
+					<div class="list-group list-group-flush">
+						@foreach (var doc in Model.Documents)
+						{
+							<div class="list-group-item d-flex justify-content-between align-items-center">
+								<div>
+									<i class="bi bi-file-earmark-pdf"></i> @doc.FileName
+									<small class="text-muted d-block">Uploaded: @doc.UploadedAt.ToString("MMM dd, yyyy HH:mm")</small>
+								</div>
+								<a href="@doc.FilePath" class="btn btn-sm btn-outline-primary" target="_blank">View</a>
+							</div>
+						}
+					</div>
+				}
+				else
+				{
+					<div class="alert alert-warning mb-0">
+						<strong>⚠️ No documents uploaded yet.</strong> The lecturer should upload supporting documents for verification.
+					</div>
+				}
+			</div>
+		</div>
+
+		<!-- Action Buttons -->
+		<div class="card shadow-sm">
+			<div class="card-body">
+				<h6 class="card-title mb-3">🔧 Actions</h6>
+				@if (Model.Status == CMCS.Web.Models.ClaimStatus.Submitted)
+				{
+					<!-- Coordinator Actions -->
+					<div class="d-grid gap-2 d-md-flex">
+						<button type="button" class="btn btn-success btn-lg flex-fill" data-bs-toggle="modal" data-bs-target="#verifyModal">
+							✓ Verify Claim
+						</button>
+						<button type="button" class="btn btn-danger btn-lg flex-fill" data-bs-toggle="modal" data-bs-target="#rejectModal">
+							✗ Reject Claim
+						</button>
+					</div>
+				}
+				else if (Model.Status == CMCS.Web.Models.ClaimStatus.Verified)
+				{
+					<!-- Manager Actions -->
+					<div class="d-grid gap-2 d-md-flex">
+						<button type="button" class="btn btn-success btn-lg flex-fill" data-bs-toggle="modal" data-bs-target="#approveModal">
+							✓ Approve for Payment
+						</button>
+						<button type="button" class="btn btn-danger btn-lg flex-fill" data-bs-toggle="modal" data-bs-target="#rejectModal">
+							✗ Reject Claim
+						</button>
+					</div>
+				}
+				else
+				{
+					<div class="alert alert-info mb-0">
+						<strong>ℹ️ This claim has already been processed.</strong> Current status: @Model.Status
+					</div>
+				}
+			</div>
+		</div>
 	</div>
 </div>
 
-<div class="mt-3 d-flex gap-2">
-	<button class="btn btn-success" disabled>Approve</button>
-	<button class="btn btn-outline-secondary" disabled>Verify</button>
-	<button class="btn btn-danger" disabled>Reject</button>
+<!-- Verify Modal -->
+<div class="modal fade" id="verifyModal" tabindex="-1">
+	<div class="modal-dialog">
+		<div class="modal-content">
+			<form asp-action="VerifyClaim" method="post">
+				@Html.AntiForgeryToken()
+				<input type="hidden" name="id" value="@Model.Id" />
+				<div class="modal-header bg-success text-white">
+					<h5 class="modal-title">✓ Verify Claim #@Model.Id</h5>
+					<button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+				</div>
+				<div class="modal-body">
+					<p>Confirm verification of this claim?</p>
+					<div class="mb-3">
+						<label for="verifyComment" class="form-label">Comment (Optional)</label>
+						<textarea class="form-control" id="verifyComment" name="comment" rows="3"></textarea>
+					</div>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+					<button type="submit" class="btn btn-success">✓ Verify</button>
+				</div>
+			</form>
+		</div>
+	</div>
+</div>
+
+<!-- Approve Modal -->
+<div class="modal fade" id="approveModal" tabindex="-1">
+	<div class="modal-dialog">
+		<div class="modal-content">
+			<form asp-action="ApproveClaim" method="post">
+				@Html.AntiForgeryToken()
+				<input type="hidden" name="id" value="@Model.Id" />
+				<div class="modal-header bg-success text-white">
+					<h5 class="modal-title">✓ Approve Claim #@Model.Id</h5>
+					<button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+				</div>
+				<div class="modal-body">
+					<p>Approve this claim for payment (R @Model.Amount.ToString("N2"))?</p>
+					<div class="mb-3">
+						<label for="approveComment" class="form-label">Comment (Optional)</label>
+						<textarea class="form-control" id="approveComment" name="comment" rows="3"></textarea>
+					</div>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+					<button type="submit" class="btn btn-success">✓ Approve</button>
+				</div>
+			</form>
+		</div>
+	</div>
+</div>
+
+<!-- Reject Modal -->
+<div class="modal fade" id="rejectModal" tabindex="-1">
+	<div class="modal-dialog">
+		<div class="modal-content">
+			<form asp-action="RejectClaim" method="post">
+				@Html.AntiForgeryToken()
+				<input type="hidden" name="id" value="@Model.Id" />
+				<input type="hidden" name="returnTo" value="Coordinator" />
+				<div class="modal-header bg-danger text-white">
+					<h5 class="modal-title">✗ Reject Claim #@Model.Id</h5>
+					<button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+				</div>
+				<div class="modal-body">
+					<p>Are you sure you want to reject this claim?</p>
+					<div class="mb-3">
+						<label for="rejectComment" class="form-label">Reason <span class="text-danger">*</span></label>
+						<textarea class="form-control" id="rejectComment" name="comment" rows="3" required></textarea>
+					</div>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+					<button type="submit" class="btn btn-danger">✗ Reject</button>
+				</div>
+			</form>
+		</div>
+	</div>
 </div>
 
 

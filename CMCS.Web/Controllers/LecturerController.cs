@@ -1,14 +1,18 @@
 using CMCS.Web.Models;
 using CMCS.Web.Models.ViewModels;
+using CMCS.Web.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CMCS.Web.Controllers;
 
 public class LecturerController : Controller
 {
-	// In-memory storage for demo purposes (Part 2 prototype)
-	private static List<Claim> _claims = new();
-	private static int _nextClaimId = 1;
+	private readonly ClaimsService _claimsService;
+
+	public LecturerController(ClaimsService claimsService)
+	{
+		_claimsService = claimsService;
+	}
 
 	public IActionResult Dashboard()
 	{
@@ -67,7 +71,6 @@ public class LecturerController : Controller
 			// Create and save the claim
 			var claim = new Claim
 			{
-				Id = _nextClaimId++,
 				LecturerId = 1, // Hardcoded for prototype
 				Month = model.Month,
 				Year = model.Year,
@@ -82,7 +85,7 @@ public class LecturerController : Controller
 				}).ToList()
 			};
 
-			_claims.Add(claim);
+			claim = _claimsService.AddClaim(claim);
 
 			TempData["SuccessMessage"] = $"Claim submitted successfully! Claim ID: {claim.Id}. Total Amount: R{claim.Amount:N2}";
 			return RedirectToAction(nameof(MyClaims));
@@ -96,17 +99,8 @@ public class LecturerController : Controller
 
 	public IActionResult MyClaims()
 	{
-		// Combine in-memory claims with sample data
-		var allClaims = new List<Claim>(_claims);
-		
-		if (!allClaims.Any())
-		{
-			// Show sample data if no claims submitted yet
-			allClaims.Add(new Claim { Id = 101, Month = DateTime.UtcNow.Month, Year = DateTime.UtcNow.Year, Status = ClaimStatus.Submitted, TotalHours = 10, HourlyRate = 500, Amount = 5000 });
-			allClaims.Add(new Claim { Id = 102, Month = DateTime.UtcNow.AddMonths(-1).Month, Year = DateTime.UtcNow.Year, Status = ClaimStatus.Verified, TotalHours = 8, HourlyRate = 500, Amount = 4000 });
-		}
-
-		return View(allClaims.OrderByDescending(c => c.Id).ToList());
+		var claims = _claimsService.GetAllClaims();
+		return View(claims);
 	}
 
 	public IActionResult UploadDocuments(int id)

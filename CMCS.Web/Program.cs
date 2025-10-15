@@ -1,9 +1,16 @@
+using CMCS.Web.Services;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
+builder.Services.AddSingleton<ClaimsService>();
 
 var app = builder.Build();
+
+// Seed sample data
+var claimsService = app.Services.GetRequiredService<ClaimsService>();
+claimsService.SeedSampleData();
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())

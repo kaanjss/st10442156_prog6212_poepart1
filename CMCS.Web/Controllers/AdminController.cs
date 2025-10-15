@@ -1,50 +1,135 @@
 using CMCS.Web.Models;
+using CMCS.Web.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CMCS.Web.Controllers;
 
 public class AdminController : Controller
 {
+	private readonly ClaimsService _claimsService;
+
+	public AdminController(ClaimsService claimsService)
+	{
+		_claimsService = claimsService;
+	}
+
 	public IActionResult Coordinator()
 	{
-		var pending = new List<Claim>
-		{
-			new Claim{ Id = 201, Month = DateTime.UtcNow.Month, Year = DateTime.UtcNow.Year, Status = ClaimStatus.Submitted, TotalHours = 12, HourlyRate = 450, Amount = 5400 },
-		};
-		return View(pending);
+		var pendingClaims = _claimsService.GetPendingClaimsForCoordinator();
+		return View(pendingClaims);
 	}
 
 	public IActionResult Manager()
 	{
-		var toApprove = new List<Claim>
-		{
-			new Claim{ Id = 301, Month = DateTime.UtcNow.Month, Year = DateTime.UtcNow.Year, Status = ClaimStatus.Verified, TotalHours = 15, HourlyRate = 500, Amount = 7500 },
-		};
-		return View(toApprove);
+		var verifiedClaims = _claimsService.GetPendingClaimsForManager();
+		return View(verifiedClaims);
 	}
 
 	public IActionResult Review(int id)
 	{
-		var claim = new Claim
+		var claim = _claimsService.GetClaimById(id);
+		if (claim == null)
 		{
-			Id = id,
-			Month = DateTime.UtcNow.Month,
-			Year = DateTime.UtcNow.Year,
-			Status = ClaimStatus.Submitted,
-			HourlyRate = 500,
-			TotalHours = 10,
-			Amount = 5000,
-			Lines = new List<ClaimLine>
-			{
-				new ClaimLine{ Id = 1, ClaimId = id, ActivityDescription = "Lecture: PROG6212", Hours = 6 },
-				new ClaimLine{ Id = 2, ClaimId = id, ActivityDescription = "Marking", Hours = 4 }
-			},
-			Documents = new List<Document>
-			{
-				new Document{ Id = 1, ClaimId = id, FileName = "Timesheet.pdf", FilePath = "/uploads/Timesheet.pdf" },
-			}
-		};
+			TempData["ErrorMessage"] = "Claim not found.";
+			return RedirectToAction(nameof(Coordinator));
+		}
 		return View(claim);
+	}
+
+	[HttpPost]
+	[ValidateAntiForgeryToken]
+	public IActionResult VerifyClaim(int id, string comment)
+	{
+		try
+		{
+			var claim = _claimsService.GetClaimById(id);
+			if (claim == null)
+			{
+				TempData["ErrorMessage"] = "Claim not found.";
+				return RedirectToAction(nameof(Coordinator));
+			}
+
+			if (_claimsService.VerifyClaim(id, comment))
+			{
+				TempData["SuccessMessage"] = $"Claim #{id} has been verified successfully.";
+			}
+			else
+			{
+				TempData["ErrorMessage"] = "Failed to verify the claim.";
+			}
+		}
+		catch (Exception ex)
+		{
+			TempData["ErrorMessage"] = $"An error occurred: {ex.Message}";
+		}
+
+		return RedirectToAction(nameof(Coordinator));
+	}
+
+	[HttpPost]
+	[ValidateAntiForgeryToken]
+	public IActionResult ApproveClaim(int id, string comment)
+	{
+		try
+		{
+			var claim = _claimsService.GetClaimById(id);
+			if (claim == null)
+			{
+				TempData["ErrorMessage"] = "Claim not found.";
+				return RedirectToAction(nameof(Manager));
+			}
+
+			if (_claimsService.ApproveClaim(id, comment))
+			{
+				TempData["SuccessMessage"] = $"Claim #{id} has been approved successfully.";
+			}
+			else
+			{
+				TempData["ErrorMessage"] = "Failed to approve the claim.";
+			}
+		}
+		catch (Exception ex)
+		{
+			TempData["ErrorMessage"] = $"An error occurred: {ex.Message}";
+		}
+
+		return RedirectToAction(nameof(Manager));
+	}
+
+	[HttpPost]
+	[ValidateAntiForgeryToken]
+	public IActionResult RejectClaim(int id, string comment, string returnTo = "Coordinator")
+	{
+		try
+		{
+			if (string.IsNullOrWhiteSpace(comment))
+			{
+				TempData["ErrorMessage"] = "A comment is required when rejecting a claim.";
+				return RedirectToAction(returnTo);
+			}
+
+			var claim = _claimsService.GetClaimById(id);
+			if (claim == null)
+			{
+				TempData["ErrorMessage"] = "Claim not found.";
+				return RedirectToAction(returnTo);
+			}
+
+			if (_claimsService.RejectClaim(id, comment))
+			{
+				TempData["SuccessMessage"] = $"Claim #{id} has been rejected.";
+			}
+			else
+			{
+				TempData["ErrorMessage"] = "Failed to reject the claim.";
+			}
+		}
+		catch (Exception ex)
+		{
+			TempData["ErrorMessage"] = $"An error occurred: {ex.Message}";
+		}
+
+		return RedirectToAction(returnTo);
 	}
 }
 
