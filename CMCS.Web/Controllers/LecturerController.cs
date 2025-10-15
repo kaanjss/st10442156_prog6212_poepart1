@@ -34,6 +34,9 @@ public class LecturerController : Controller
 	[HttpGet]
 	public IActionResult Submit()
 	{
+		// Clear any error messages from previous pages
+		TempData.Remove("ErrorMessage");
+		
 		var vm = new ClaimSubmissionViewModel
 		{
 			Month = DateTime.UtcNow.Month,
