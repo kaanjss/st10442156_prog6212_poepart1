@@ -178,8 +178,8 @@ setup_database.sql  # Database setup
 ## Version Control
 
 - **Repository:** https://github.com/kaanjss/st10442156_prog6212_poepart1.git
-- **Commits:** 20+ descriptive commits
-- **Branches:** main
+- **Branch:** main
+- **Clean commit history with complete POE Part 3 implementation**
 
 ---
 
